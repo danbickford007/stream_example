@@ -1,17 +1,22 @@
 %h1 Listing cars
 
+= text_area_tag :content, '', rows: 30, style: 'width:400px'
 
-= link_to 'New Car', new_car_path
+= form_for Car.new, remote: true do |f|
+  = f.text_field :make
+  %br
+  = f.submit 'Chat'
+%hr
 
-= form_tag messaging_path, :method => 'get' do 
-  = text_field_tag :message, params[:message] 
-  = submit_tag "Post Message"
+%hr
 #test
+%hr
 :javascript
-  jQuery(document).ready(function(){
+  $(document).ready(function(){
      var source = new EventSource("/stream");
-     source.addEventListener('update', function(e){
-        $('#test').html($('#test').html() + e);      
+     source.addEventListener('message', function(e){
+        $('#content').append(e.data + "\n");      
+        $('#car_make').val('');
      });
   }); 
 

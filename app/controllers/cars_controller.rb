@@ -2,14 +2,10 @@ class CarsController < ApplicationController
   before_action :set_car, only: [:show, :edit, :update, :destroy]
 
   include ActionController::Live
+  Mime::Type.register "text/event-stream", :stream
 
   def index
-    response.headers['Content-Type'] = 'text/event-stream'
-    5.times {
-      response.stream.write "This is a test Messagen\n"
-      sleep 1
-    }
-    response.stream.close
+    # response.headers['Content-Type'] = 'text/event-stream'
   end
 
   def send_message
@@ -20,11 +16,22 @@ class CarsController < ApplicationController
 
   def stream
     response.headers['Content-Type'] = 'text/event-stream'
-    5.times {
-      response.stream.write "This is a test Messagen\n"
-      sleep 1
-    }
-    response.stream.close
+    time = DateTime.now - 5.seconds
+    begin
+      redis = Redis.new
+      redis.subscribe('messages.create') do |on|
+        on.message do |event, data|
+          response.stream.write "data: #{data}\n\n"
+        end
+      end
+    rescue => e
+      p '!!!!!!!!!!!!!!'
+      p e
+      p e.backtrace 
+    ensure
+      p '!!!!!!!!!!!!!!-closing'
+      response.stream.close
+    end
   end
 
   def show
@@ -43,15 +50,10 @@ class CarsController < ApplicationController
   # POST /cars.json
   def create
     @car = Car.new(car_params)
-
+    @car.save
+    $redis.publish('messages.create', @car.make)
     respond_to do |format|
-      if @car.save
-        format.html { redirect_to @car, notice: 'Car was successfully created.' }
-        format.json { render :show, status: :created, location: @car }
-      else
-        format.html { render :new }
-        format.json { render json: @car.errors, status: :unprocessable_entity }
-      end
+      format.js { render js: "" } 
     end
   end
 
